@@ -322,7 +322,7 @@ public class Mod {
     }
 
     public void download(InstanceInstaller installer, int attempt) {
-        if (installer.isServer() && this.serverUrl != null) {
+        if (installer.server && this.serverUrl != null) {
             downloadServer(installer, attempt);
         } else {
             downloadClient(installer, attempt);
@@ -611,7 +611,7 @@ public class Mod {
     public void install(InstanceInstaller installer) {
         File fileLocation;
         ModType thisType;
-        if (installer.isServer() && this.serverUrl != null) {
+        if (installer.server && this.serverUrl != null) {
             fileLocation = new File(App.settings.getDownloadsDir(), getServerFile());
             thisType = this.serverType;
         } else {
@@ -621,46 +621,47 @@ public class Mod {
         switch (thisType) {
             case jar:
             case forge:
-                if (installer.isServer() && thisType == ModType.forge) {
-                    Utils.copyFile(fileLocation, installer.getRootDirectory());
+                if (installer.server && thisType == ModType.forge) {
+                    Utils.copyFile(fileLocation, installer.root);
                     break;
-                } else if (installer.isServer() && thisType == ModType.jar) {
-                    Utils.unzip(fileLocation, installer.getTempJarDirectory());
+                } else if (installer.server && thisType == ModType.jar) {
+                    File tmpJarDir = new File(App.settings.getTempDir(), installer.pack.getSafeName() + "_" + installer.version.getSafeVersion() + "_jar");
+                    Utils.unzip(fileLocation, tmpJarDir);
                     break;
                 }
-                Utils.copyFile(fileLocation, installer.getJarModsDirectory());
+                Utils.copyFile(fileLocation, installer.jarmods);
                 installer.addToJarOrder(getFile());
                 break;
             case mcpc:
-                if (installer.isServer()) {
-                    Utils.copyFile(fileLocation, installer.getRootDirectory());
+                if (installer.server) {
+                    Utils.copyFile(fileLocation, installer.root);
                     break;
                 }
                 break;
             case texturepack:
-                if (!installer.getTexturePacksDirectory().exists()) {
-                    installer.getTexturePacksDirectory().mkdir();
+                if (!installer.texturepacks.exists()) {
+                    installer.texturepacks.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getTexturePacksDirectory());
+                Utils.copyFile(fileLocation, installer.texturepacks);
                 break;
             case resourcepack:
-                if (!installer.getResourcePacksDirectory().exists()) {
-                    installer.getResourcePacksDirectory().mkdir();
+                if (!installer.resourcepacks.exists()) {
+                    installer.resourcepacks.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getResourcePacksDirectory());
+                Utils.copyFile(fileLocation, installer.resourcepacks);
                 break;
             case texturepackextract:
-                if (!installer.getTexturePacksDirectory().exists()) {
-                    installer.getTexturePacksDirectory().mkdir();
+                if (!installer.texturepacks.exists()) {
+                    installer.texturepacks.mkdir();
                 }
-                Utils.unzip(fileLocation, installer.getTempTexturePackDirectory());
+                Utils.unzip(fileLocation, new File(App.settings.getTempDir(), installer.pack.getSafeName() + "_" + installer.version.getSafeVersion() + "_tptmp"));
                 installer.setTexturePackExtracted();
                 break;
             case resourcepackextract:
-                if (!installer.getResourcePacksDirectory().exists()) {
-                    installer.getResourcePacksDirectory().mkdir();
+                if (!installer.resourcepacks.exists()) {
+                    installer.resourcepacks.mkdir();
                 }
-                Utils.unzip(fileLocation, installer.getTempResourcePackDirectory());
+                Utils.unzip(fileLocation, new File(App.settings.getTempDir(), installer.pack.getSafeName() + "_" + installer.version.getSafeVersion() + "_rptmp"));
                 installer.setResourcePackExtracted();
                 break;
             case millenaire:
@@ -675,60 +676,66 @@ public class Mod {
                             return thisFile.isDirectory();
                         }
                     })) {
-                        Utils.copyDirectory(new File(thisFolder, dir), installer.getModsDirectory());
+                        Utils.copyDirectory(new File(thisFolder, dir), installer.mods);
                     }
                 }
                 Utils.delete(tempDirMillenaire);
                 break;
             case mods:
-                Utils.copyFile(fileLocation, installer.getModsDirectory());
+                Utils.copyFile(fileLocation, installer.mods);
                 break;
             case ic2lib:
-                if (!installer.getIC2LibDirectory().exists()) {
-                    installer.getIC2LibDirectory().mkdir();
+                File ic2 = new File(installer.mods, "ic2");
+                if (!ic2.exists()) {
+                    ic2.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getIC2LibDirectory());
+                Utils.copyFile(fileLocation, ic2);
                 break;
             case flan:
-                if (!installer.getFlanDirectory().exists()) {
-                    installer.getFlanDirectory().mkdir();
+                File flans = new File(installer.root, "Flans");
+                if (!flans.exists()) {
+                    flans.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getFlanDirectory());
+                Utils.copyFile(fileLocation, flans);
                 break;
             case denlib:
-                if (!installer.getDenLibDirectory().exists()) {
-                    installer.getDenLibDirectory().mkdir();
+                File dlib = new File(installer.mods, "denlib");
+                if (!dlib.exists()) {
+                    dlib.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getDenLibDirectory());
+                Utils.copyFile(fileLocation, dlib);
                 break;
             case depandency:
             case dependency:
-                if (!installer.getDependencyDirectory().exists()) {
-                    installer.getDependencyDirectory().mkdirs();
+                File deps = new File(installer.mods, installer.version.getMinecraftVersion().getVersion());
+                if (!deps.exists()) {
+                    deps.mkdirs();
                 }
-                Utils.copyFile(fileLocation, installer.getDependencyDirectory());
+                Utils.copyFile(fileLocation, deps);
                 break;
             case plugins:
-                if (!installer.getPluginsDirectory().exists()) {
-                    installer.getPluginsDirectory().mkdir();
+                File plugins = new File(installer.root, "plugins");
+                if (!plugins.exists()) {
+                    plugins.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getPluginsDirectory());
+                Utils.copyFile(fileLocation, plugins);
                 break;
             case coremods:
-                if (installer.getVersion().getMinecraftVersion().usesCoreMods()) {
-                    if (!installer.getCoreModsDirectory().exists()) {
-                        installer.getCoreModsDirectory().mkdir();
+                if (installer.version.getMinecraftVersion().usesCoreMods()) {
+                    if (!installer.coremods.exists()) {
+                        installer.coremods.mkdir();
                     }
-                    Utils.copyFile(fileLocation, installer.getCoreModsDirectory());
+                    Utils.copyFile(fileLocation, installer.coremods);
                 } else {
-                    Utils.copyFile(fileLocation, installer.getModsDirectory());
+                    Utils.copyFile(fileLocation, installer.mods);
                 }
                 break;
             case shaderpack:
-                if (!installer.getShaderPacksDirectory().exists()) {
-                    installer.getShaderPacksDirectory().mkdir();
+                File shaderpacks = new File(installer.root, "shaderpacks");
+                if (!shaderpacks.exists()) {
+                    shaderpacks.mkdir();
                 }
-                Utils.copyFile(fileLocation, installer.getShaderPacksDirectory());
+                Utils.copyFile(fileLocation, shaderpacks);
                 break;
             case extract:
                 File tempDirExtract = new File(App.settings.getTempDir(), getSafeName());
@@ -736,20 +743,20 @@ public class Mod {
                 File folder = new File(new File(App.settings.getTempDir(), getSafeName()), this.extractFolder);
                 switch (extractTo) {
                     case coremods:
-                        if (installer.getVersion().getMinecraftVersion().usesCoreMods()) {
-                            if (!installer.getCoreModsDirectory().exists()) {
-                                installer.getCoreModsDirectory().mkdir();
+                        if (installer.version.getMinecraftVersion().usesCoreMods()) {
+                            if (!installer.coremods.exists()) {
+                                installer.coremods.mkdir();
                             }
-                            Utils.copyDirectory(folder, installer.getCoreModsDirectory());
+                            Utils.copyDirectory(folder, installer.coremods);
                         } else {
-                            Utils.copyDirectory(folder, installer.getModsDirectory());
+                            Utils.copyDirectory(folder, installer.mods);
                         }
                         break;
                     case mods:
-                        Utils.copyDirectory(folder, installer.getModsDirectory());
+                        Utils.copyDirectory(folder, installer.mods);
                         break;
                     case root:
-                        Utils.copyDirectory(folder, installer.getRootDirectory());
+                        Utils.copyDirectory(folder, installer.root);
                         break;
                     default:
                         LogManager.error("No known way to extract mod " + this.name + " with type " + this.extractTo);
@@ -765,47 +772,47 @@ public class Mod {
                     switch (decompType) {
                         case coremods:
                             if (tempFileDecomp.isFile()) {
-                                if (installer.getVersion().getMinecraftVersion().usesCoreMods()) {
-                                    if (!installer.getCoreModsDirectory().exists()) {
-                                        installer.getCoreModsDirectory().mkdir();
+                                if (installer.version.getMinecraftVersion().usesCoreMods()) {
+                                    if (!installer.coremods.exists()) {
+                                        installer.coremods.mkdir();
                                     }
-                                    Utils.copyFile(tempFileDecomp, installer.getCoreModsDirectory());
+                                    Utils.copyFile(tempFileDecomp, installer.coremods);
                                 } else {
-                                    Utils.copyFile(tempFileDecomp, installer.getModsDirectory());
+                                    Utils.copyFile(tempFileDecomp, installer.mods);
                                 }
                             } else {
-                                if (installer.getVersion().getMinecraftVersion().usesCoreMods()) {
-                                    if (!installer.getCoreModsDirectory().exists()) {
-                                        installer.getCoreModsDirectory().mkdir();
+                                if (installer.version.getMinecraftVersion().usesCoreMods()) {
+                                    if (!installer.coremods.exists()) {
+                                        installer.coremods.mkdir();
                                     }
-                                    Utils.copyDirectory(tempFileDecomp, installer.getCoreModsDirectory());
+                                    Utils.copyDirectory(tempFileDecomp, installer.coremods);
                                 } else {
-                                    Utils.copyDirectory(tempFileDecomp, installer.getModsDirectory());
+                                    Utils.copyDirectory(tempFileDecomp, installer.mods);
                                 }
                             }
                             break;
                         case jar:
                             if (tempFileDecomp.isFile()) {
-                                Utils.copyFile(tempFileDecomp, installer.getJarModsDirectory());
+                                Utils.copyFile(tempFileDecomp, installer.jarmods);
                                 installer.addToJarOrder(decompFile);
                             } else {
-                                File newFile = new File(installer.getJarModsDirectory(), getSafeName() + ".zip");
+                                File newFile = new File(installer.jarmods, getSafeName() + ".zip");
                                 Utils.zip(tempFileDecomp, newFile);
                                 installer.addToJarOrder(getSafeName() + ".zip");
                             }
                             break;
                         case mods:
                             if (tempFileDecomp.isFile()) {
-                                Utils.copyFile(tempFileDecomp, installer.getModsDirectory());
+                                Utils.copyFile(tempFileDecomp, installer.mods);
                             } else {
-                                Utils.copyDirectory(tempFileDecomp, installer.getModsDirectory());
+                                Utils.copyDirectory(tempFileDecomp, installer.mods);
                             }
                             break;
                         case root:
                             if (tempFileDecomp.isFile()) {
-                                Utils.copyFile(tempFileDecomp, installer.getRootDirectory());
+                                Utils.copyFile(tempFileDecomp, installer.root);
                             } else {
-                                Utils.copyDirectory(tempFileDecomp, installer.getRootDirectory());
+                                Utils.copyDirectory(tempFileDecomp, installer.root);
                             }
                             break;
                         default:
@@ -828,7 +835,7 @@ public class Mod {
         ModType thisType;
         String file;
         File base = null;
-        if (installer.isServer()) {
+        if (installer.server) {
             file = getServerFile();
             thisType = this.serverType;
         } else {
@@ -838,45 +845,45 @@ public class Mod {
         switch (thisType) {
             case jar:
             case forge:
-                if (installer.isServer() && thisType == ModType.forge) {
-                    base = installer.getRootDirectory();
+                if (installer.server && thisType == ModType.forge) {
+                    base = installer.root;
                     break;
                 }
-                base = installer.getJarModsDirectory();
+                base = installer.jarmods;
                 break;
             case mcpc:
-                if (installer.isServer()) {
-                    base = installer.getRootDirectory();
+                if (installer.server) {
+                    base = installer.root;
                     break;
                 }
                 break;
             case texturepack:
-                base = installer.getTexturePacksDirectory();
+                base = installer.texturepacks;
                 break;
             case resourcepack:
-                base = installer.getResourcePacksDirectory();
+                base = installer.resourcepacks;
                 break;
             case mods:
-                base = installer.getModsDirectory();
+                base = installer.mods;
                 break;
             case ic2lib:
-                base = installer.getIC2LibDirectory();
+                base = new File(installer.mods, "ic2");
                 break;
             case denlib:
-                base = installer.getDenLibDirectory();
+                base = new File(installer.mods, "denlib");
                 break;
             case plugins:
-                base = installer.getPluginsDirectory();
+                base = new File(installer.root, "plugins");
                 break;
             case coremods:
-                if (installer.getVersion().getMinecraftVersion().usesCoreMods()) {
-                    base = installer.getCoreModsDirectory();
+                if (installer.version.getMinecraftVersion().usesCoreMods()) {
+                    base = installer.jarmods;
                 } else {
-                    base = installer.getModsDirectory();
+                    base = installer.mods;
                 }
                 break;
             case shaderpack:
-                base = installer.getShaderPacksDirectory();
+                base = new File(installer.root, "shaderpacks");
                 break;
             default:
                 LogManager.error("No known way to find installed mod " + this.name + " with type " + thisType);

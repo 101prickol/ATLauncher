@@ -154,10 +154,10 @@ public class ModsChooser extends JDialog {
         selectAllButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 for (ModsJCheckBox check : modCheckboxes) {
-                    if ((installer.isServer() ? check.getMod().isServerOptional() : check.getMod().isOptional())) {
+                    if ((installer.server ? check.getMod().isServerOptional() : check.getMod().isOptional())) {
                         if (check.getMod().isRecommended()) {
                             if (check.getMod().hasGroup()) {
-                                if (check.getMod().isRecommended() && installer.isOnlyRecommendedInGroup(check.getMod
+                                if (check.getMod().isRecommended() && installer.isRecommendedInGroup(check.getMod
                                         ())) {
                                     check.setSelected(true);
                                     check.setEnabled(true);
@@ -183,7 +183,7 @@ public class ModsChooser extends JDialog {
         clearAllButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 for (ModsJCheckBox check : modCheckboxes) {
-                    if ((installer.isServer() ? check.getMod().isServerOptional() : check.getMod().isOptional())) {
+                    if ((installer.server ? check.getMod().isServerOptional() : check.getMod().isOptional())) {
                         check.setSelected(false);
                         List<Mod> linkedMods = modsToChange(check.getMod());
                         for (Mod mod : linkedMods) {
@@ -211,14 +211,14 @@ public class ModsChooser extends JDialog {
         int count1 = 0;
         int count2 = 0;
 
-        for (int i = 0; i < installer.getMods().size(); ) {
+        for (int i = 0; i < installer.getAllMods().size(); i++ ) {
             boolean skip = false;
-            final Mod mod = installer.getMods().get(i);
-            if (installer.isServer() && !mod.installOnServer()) {
+            final Mod mod = installer.getAllMods().get(i);
+            if (installer.server && !mod.installOnServer()) {
                 continue;
             }
             ModsJCheckBox checkBox = null;
-            if ((installer.isServer() ? mod.isServerOptional() : mod.isOptional())) {
+            if ((installer.server ? mod.isServerOptional() : mod.isOptional())) {
                 if (!skip) {
                     checkBox = new ModsJCheckBox(mod);
                     checkBox.setEnabled(true);
@@ -232,7 +232,7 @@ public class ModsChooser extends JDialog {
                             installer.cancel(true);
                             return;
                         }
-                        if ((installer.isServer() ? linkedMod.isServerOptional() : linkedMod.isOptional())) {
+                        if ((installer.server ? linkedMod.isServerOptional() : linkedMod.isOptional())) {
                             checkBox.setEnabled(false);
                             checkBox.setBounds(20, (count1 * 20), checkBox.getPreferredSize().width, 20);
                         } else {
@@ -276,9 +276,9 @@ public class ModsChooser extends JDialog {
                     checkBox.addActionListener(new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent e) {
-                            if (finalCheckBox.isSelected() && installer.getJsonVersion().hasWarningMessage(mod
+                            if (finalCheckBox.isSelected() && installer.jsonVersion.hasWarningMessage(mod
                                     .getWarning())) {
-                                String message = installer.getJsonVersion().getWarningMessage(mod.getWarning());
+                                String message = installer.jsonVersion.getWarningMessage(mod.getWarning());
 
                                 if (message != null) {
                                     String[] options = {Language.INSTANCE.localize("common.yes"), Language.INSTANCE
@@ -309,15 +309,15 @@ public class ModsChooser extends JDialog {
                     count2++;
                 }
             }
-            if (installer.isReinstall()) {
+            if (installer.reinstall) {
                 if (installer.wasModInstalled(mod.getName())) {
-                    if ((installer.isServer() ? mod.isServerOptional() : mod.isOptional())) {
+                    if ((installer.server ? mod.isServerOptional() : mod.isOptional())) {
                         checkBox.setSelected(true);
                         checkBox.setEnabled(true);
                     }
                 }
             } else {
-                if ((installer.isServer() ? mod.isServerOptional() : mod.isOptional()) && mod.isSelected()) {
+                if ((installer.server ? mod.isServerOptional() : mod.isOptional()) && mod.isSelected()) {
                     checkBox.setSelected(true);
                     checkBox.setEnabled(true);
                 }
@@ -335,7 +335,7 @@ public class ModsChooser extends JDialog {
         }
         for (int i = 0; i < modCheckboxes.size(); i++) {
             ModsJCheckBox checkBox = modCheckboxes.get(i);
-            if ((installer.isServer() ? checkBox.getMod().isServerOptional() : checkBox.getMod().isOptional())) {
+            if ((installer.server ? checkBox.getMod().isServerOptional() : checkBox.getMod().isOptional())) {
                 checkBoxPanel1.add(checkBox);
             } else {
                 checkBoxPanel2.add(checkBox);
@@ -423,7 +423,7 @@ public class ModsChooser extends JDialog {
     }
 
     private List<Mod> modsDependancies(Mod mod) {
-        return installer.getModsDependancies(mod);
+        return installer.getModsDependencies(mod);
     }
 
     private List<Mod> dependedMods(Mod mod) {
@@ -431,7 +431,7 @@ public class ModsChooser extends JDialog {
     }
 
     private boolean hasADependancy(Mod mod) {
-        return installer.hasADependancy(mod);
+        return installer.hasADependency(mod);
     }
 
     public void sortOutMods(ModsJCheckBox a) {
