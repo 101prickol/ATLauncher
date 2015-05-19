@@ -17,6 +17,7 @@
  */
 package com.atlauncher.data;
 
+import com.atlauncher.App;
 import com.atlauncher.utils.Utils;
 import com.atlauncher.workers.InstanceInstaller;
 
@@ -58,34 +59,31 @@ public class Action {
     }
 
     public void execute(InstanceInstaller instanceInstaller) {
-        if ((instanceInstaller.isServer() && !server) || (!instanceInstaller.isServer() && !client)) {
+        File tmpActions = new File(App.settings.getTempDir(), instanceInstaller.pack.getSafeName() + "_" + instanceInstaller.version.getSafeVersion() + "_atmp");
+        if ((instanceInstaller.server && !server) || (!instanceInstaller.server && !client)) {
             return;
         }
-        Utils.deleteContents(instanceInstaller.getTempActionsDirectory());
+        Utils.deleteContents(tmpActions);
         instanceInstaller.fireTask("Executing Action");
         instanceInstaller.fireSubProgressUnknown();
         if (this.action.equalsIgnoreCase("createzip")) {
             if (mod.size() >= 2) {
                 for (Mod mod : this.mod) {
-                    Utils.unzip(mod.getInstalledFile(instanceInstaller), instanceInstaller.getTempActionsDirectory());
+                    Utils.unzip(mod.getInstalledFile(instanceInstaller), tmpActions);
                 }
                 switch (this.type) {
                     case mods:
-                        Utils.zip(instanceInstaller.getTempActionsDirectory(), new File(instanceInstaller
-                                .getModsDirectory(), saveAs));
+                        Utils.zip(tmpActions, new File(new File(instanceInstaller.root, "mods"), saveAs));
                         break;
                     case coremods:
-                        if (instanceInstaller.getVersion().getMinecraftVersion().usesCoreMods()) {
-                            Utils.zip(instanceInstaller.getTempActionsDirectory(), new File(instanceInstaller
-                                    .getCoreModsDirectory(), saveAs));
+                        if (instanceInstaller.version.getMinecraftVersion().usesCoreMods()) {
+                            Utils.zip(tmpActions, new File(instanceInstaller.coremods, saveAs));
                         } else {
-                            Utils.zip(instanceInstaller.getTempActionsDirectory(), new File(instanceInstaller
-                                    .getModsDirectory(), saveAs));
+                            Utils.zip(tmpActions, new File(instanceInstaller.mods, saveAs));
                         }
                         break;
                     case jar:
-                        Utils.zip(instanceInstaller.getTempActionsDirectory(), new File(instanceInstaller
-                                .getJarModsDirectory(), saveAs));
+                        Utils.zip(tmpActions, new File(instanceInstaller.jarmods, saveAs));
                         instanceInstaller.addToJarOrder(this.saveAs);
                         break;
                     default:

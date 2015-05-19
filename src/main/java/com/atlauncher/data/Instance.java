@@ -20,6 +20,7 @@ package com.atlauncher.data;
 import com.atlauncher.App;
 import com.atlauncher.Gsons;
 import com.atlauncher.LogManager;
+import com.atlauncher.annot.RequiresLogin;
 import com.atlauncher.data.openmods.OpenEyeReportResponse;
 import com.atlauncher.gui.dialogs.ProgressDialog;
 import com.atlauncher.mclauncher.LegacyMCLauncher;
@@ -1059,110 +1060,102 @@ public class Instance implements Cloneable {
      *
      * @return true if the Minecraft process was started
      */
+    @RequiresLogin
     public boolean launch() {
         final Account account = App.settings.getAccount();
-        if (account == null) {
-            String[] options = {Language.INSTANCE.localize("common.ok")};
-            JOptionPane.showOptionDialog(App.settings.getParent(), Language.INSTANCE.localize("instance.noaccount"),
-                    Language.INSTANCE.localize("instance.noaccountselected"), JOptionPane.DEFAULT_OPTION, JOptionPane
-                            .ERROR_MESSAGE, null, options, options[0]);
-            App.settings.setMinecraftLaunched(false);
-            return false;
-        } else {
-            if ((App.settings.getMaximumMemory() < this.memory) && (this.memory <= Utils.getSafeMaximumRam())) {
-                String[] options = {Language.INSTANCE.localize("common.yes"), Language.INSTANCE.localize("common.no")};
-                int ret = JOptionPane.showOptionDialog(App.settings.getParent(), HTMLUtils.centerParagraph(Language
-                                .INSTANCE.localizeWithReplace("instance.insufficientram", "<b>" + this.memory + "</b> " +
-                                        "MB<br/><br/>")), Language.INSTANCE.localize("instance.insufficientramtitle"),
-                        JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
-                if (ret != 0) {
-                    LogManager.warn("Launching of instance cancelled due to user cancelling memory warning!");
-                    App.settings.setMinecraftLaunched(false);
-                    return false;
-                }
-            }
-            if (App.settings.getPermGen() < this.permgen) {
-                String[] options = {Language.INSTANCE.localize("common.yes"), Language.INSTANCE.localize("common.no")};
-                int ret = JOptionPane.showOptionDialog(App.settings.getParent(), HTMLUtils.centerParagraph(Language
-                                .INSTANCE.localizeWithReplace("instance.insufficientpermgen", "<b>" + this.permgen + "</b> " +
-                                        "MB<br/><br/>")), Language.INSTANCE.localize("instance.insufficientpermgentitle"),
-                        JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
-                if (ret != 0) {
-                    LogManager.warn("Launching of instance cancelled due to user cancelling permgen warning!");
-                    App.settings.setMinecraftLaunched(false);
-                    return false;
-                }
-            }
-
-
-            LogManager.info("Logging into Minecraft!");
-            final ProgressDialog dialog = new ProgressDialog(Language.INSTANCE.localize("account.loggingin"), 0,
-                    Language.INSTANCE.localize("account.loggingin"), "Aborted login to Minecraft!");
-            dialog.addThread(new Thread() {
-                public void run() {
-                    dialog.setReturnValue(account.login());
-                    dialog.close();
-                }
-            });
-            dialog.start();
-
-            final LoginResponse session = (LoginResponse) dialog.getReturnValue();
-
-            if (session == null) {
+        if ((App.settings.getMaximumMemory() < this.memory) && (this.memory <= Utils.getSafeMaximumRam())) {
+            String[] options = {Language.INSTANCE.localize("common.yes"), Language.INSTANCE.localize("common.no")};
+            int ret = JOptionPane.showOptionDialog(App.settings.getParent(), HTMLUtils.centerParagraph(Language
+                                                                                                               .INSTANCE.localizeWithReplace("instance.insufficientram", "<b>" + this.memory + "</b> " +
+                                                                                                                                                                                 "MB<br/><br/>")), Language.INSTANCE.localize("instance.insufficientramtitle"),
+                                                   JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
+            if (ret != 0) {
+                LogManager.warn("Launching of instance cancelled due to user cancelling memory warning!");
+                App.settings.setMinecraftLaunched(false);
                 return false;
             }
+        }
+        if (App.settings.getPermGen() < this.permgen) {
+            String[] options = {Language.INSTANCE.localize("common.yes"), Language.INSTANCE.localize("common.no")};
+            int ret = JOptionPane.showOptionDialog(App.settings.getParent(), HTMLUtils.centerParagraph(Language
+                                                                                                               .INSTANCE.localizeWithReplace("instance.insufficientpermgen", "<b>" + this.permgen + "</b> " +
+                                                                                                                                                                                     "MB<br/><br/>")), Language.INSTANCE.localize("instance.insufficientpermgentitle"),
+                                                   JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
+            if (ret != 0) {
+                LogManager.warn("Launching of instance cancelled due to user cancelling permgen warning!");
+                App.settings.setMinecraftLaunched(false);
+                return false;
+            }
+        }
 
-            Thread launcher = new Thread() {
-                public void run() {
-                    try {
-                        long start = System.currentTimeMillis();
-                        if (App.settings.getParent() != null) {
-                            App.settings.getParent().setVisible(false);
-                        }
-                        // Create a note of worlds for auto backup if enabled
-                        HashMap<String, Long> preWorldList = new HashMap<String, Long>();
-                        if (App.settings.isAdvancedBackupsEnabled() && App.settings.getAutoBackup()) {
-                            if (getSavesDirectory().exists()) {
-                                File[] files = getSavesDirectory().listFiles();
-                                if (files != null) {
-                                    for (File file : files) {
-                                        if (file.isDirectory()) {
-                                            preWorldList.put(file.getName(), file.lastModified());
-                                        }
+
+        LogManager.info("Logging into Minecraft!");
+        final ProgressDialog dialog = new ProgressDialog(Language.INSTANCE.localize("account.loggingin"), 0,
+                                                         Language.INSTANCE.localize("account.loggingin"), "Aborted login to Minecraft!");
+        dialog.addThread(new Thread() {
+                             public void run() {
+                                 dialog.setReturnValue(account.login());
+                                 dialog.close();
+                             }
+                         });
+        dialog.start();
+
+        final LoginResponse session = (LoginResponse) dialog.getReturnValue();
+
+        if (session == null) {
+            return false;
+        }
+
+        Thread launcher = new Thread() {
+            public void run() {
+                try {
+                    long start = System.currentTimeMillis();
+                    if (App.settings.getParent() != null) {
+                        App.settings.getParent().setVisible(false);
+                    }
+                    // Create a note of worlds for auto backup if enabled
+                    HashMap<String, Long> preWorldList = new HashMap<String, Long>();
+                    if (App.settings.isAdvancedBackupsEnabled() && App.settings.getAutoBackup()) {
+                        if (getSavesDirectory().exists()) {
+                            File[] files = getSavesDirectory().listFiles();
+                            if (files != null) {
+                                for (File file : files) {
+                                    if (file.isDirectory()) {
+                                        preWorldList.put(file.getName(), file.lastModified());
                                     }
                                 }
                             }
                         }
+                    }
 
-                        LogManager.info("Launching pack " + getPackName() + " " + getVersion() + " for " +
-                                "Minecraft " + getMinecraftVersion());
+                    LogManager.info("Launching pack " + getPackName() + " " + getVersion() + " for " +
+                                            "Minecraft " + getMinecraftVersion());
 
-                        Process process = null;
-                        if (isNewLaunchMethod()) {
-                            process = MCLauncher.launch(account, Instance.this, session);
-                        } else {
-                            process = LegacyMCLauncher.launch(account, Instance.this, session);
-                        }
+                    Process process = null;
+                    if (isNewLaunchMethod()) {
+                        process = MCLauncher.launch(account, Instance.this, session);
+                    } else {
+                        process = LegacyMCLauncher.launch(account, Instance.this, session);
+                    }
 
-                        if (!App.settings.keepLauncherOpen() && !App.settings.enableLogs()) {
-                            System.exit(0);
-                        }
+                    if (!App.settings.keepLauncherOpen() && !App.settings.enableLogs()) {
+                        System.exit(0);
+                    }
 
-                        App.settings.showKillMinecraft(process);
-                        InputStream is = process.getInputStream();
-                        InputStreamReader isr = new InputStreamReader(is);
-                        BufferedReader br = new BufferedReader(isr);
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            if (!LogManager.showDebug) {
-                                line = line.replace(account.getMinecraftUsername(), "**MINECRAFTUSERNAME**");
-                                line = line.replace(account.getUsername(), "**MINECRAFTUSERNAME**");
-                                if (account.hasAccessToken()) {
-                                    line = line.replace(account.getAccessToken(), "**ACCESSTOKEN**");
-                                }
-                                if (account.hasUUID()) {
-                                    line = line.replace(account.getUUID(), "**UUID**");
-                                }
+                    App.settings.showKillMinecraft(process);
+                    InputStream is = process.getInputStream();
+                    InputStreamReader isr = new InputStreamReader(is);
+                    BufferedReader br = new BufferedReader(isr);
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        if (!LogManager.showDebug) {
+                            line = line.replace(account.getMinecraftUsername(), "**MINECRAFTUSERNAME**");
+                            line = line.replace(account.getUsername(), "**MINECRAFTUSERNAME**");
+                            if (account.hasAccessToken()) {
+                                line = line.replace(account.getAccessToken(), "**ACCESSTOKEN**");
+                            }
+                            if (account.hasUUID()) {
+                                line = line.replace(account.getUUID(), "**UUID**");
                             }
                             LogManager.minecraft(line);
                         }
@@ -1181,77 +1174,92 @@ public class Instance implements Cloneable {
                             App.settings.logStackTrace(e);
                             process.destroy(); // Kill the process
                         }
-                        if (!App.settings.keepLauncherOpen()) {
-                            App.settings.getConsole().setVisible(false); // Hide the console to pretend we've closed
-                        }
-                        if (exitValue != 0) {
-                            // Submit any pending crash reports from Open Eye if need to since we
-                            // exited abnormally
-                            if (App.settings.enableLogs() && App.settings.enableOpenEyeReporting()) {
-                                App.TASKPOOL.submit(new Runnable() {
-                                    public void run() {
-                                        sendOpenEyePendingReports();
-                                    }
-                                });
-                            }
-                        } else if (App.settings.isAdvancedBackupsEnabled() && App.settings.getAutoBackup()) {
-                            // Begin backup
-                            if (getSavesDirectory().exists()) {
-                                File[] files = getSavesDirectory().listFiles();
-                                if (files != null) {
-                                    for (File file : files) {
-                                        if ((file.isDirectory()) && (!file.getName().equals("NEI"))) {
-                                            if (preWorldList.containsKey(file.getName())) {
-                                                // Only backup if file changed
-                                                if (!(preWorldList.get(file.getName()) == file.lastModified())) {
-                                                    SyncAbstract sync = SyncAbstract.syncList.get(App.settings
-                                                            .getLastSelectedSync());
-                                                    sync.backupWorld(file.getName() + String.valueOf(file
-                                                            .lastModified()), file, Instance.this);
-                                                }
-                                            }
-                                            // Or backup if a new file is found
-                                            else {
-                                                SyncAbstract sync = SyncAbstract.syncList.get(App.settings
-                                                        .getLastSelectedSync());
-                                                sync.backupWorld(file.getName() + String.valueOf(file.lastModified())
-                                                        .replace(":", ""), file, Instance.this);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        App.settings.setMinecraftLaunched(false);
-                        if (!App.settings.isInOfflineMode()) {
-                            if (isLeaderboardsEnabled() && isLoggingEnabled() && !isDev() && App.settings.enableLogs
-                                    ()) {
-                                final int timePlayed = (int) (end - start) / 1000;
-                                if (timePlayed > 0) {
-                                    App.TASKPOOL.submit(new Runnable() {
-                                        public void run() {
-                                            addTimePlayed(timePlayed, (isDev ? "dev" : getVersion()));
-                                        }
-                                    });
-                                }
-                            }
-                            if (App.settings.keepLauncherOpen() && App.settings.hasUpdatedFiles()) {
-                                App.settings.reloadLauncherData();
-                            }
-                        }
-                        if (!App.settings.keepLauncherOpen()) {
-                            System.exit(0);
-                        }
-                    } catch (IOException e1) {
-                        App.settings.logStackTrace(e1);
+                        LogManager.minecraft(line);
                     }
-                }
-            };
-            launcher.start();
-            return true;
-        }
+                    App.settings.hideKillMinecraft();
+                    if (App.settings.getParent() != null && App.settings.keepLauncherOpen()) {
+                        App.settings.getParent().setVisible(true);
+                    }
+                    long end = System.currentTimeMillis();
+                    if (App.settings.isInOfflineMode()) {
+                        App.settings.checkOnlineStatus();
+                    }
+                    int exitValue = 0; // Assume we exited fine
+                    try {
+                        exitValue = process.exitValue(); // Try to get the real exit value
+                    } catch (IllegalThreadStateException e) {
+                        App.settings.logStackTrace(e);
+                        process.destroy(); // Kill the process
+                    }
+                    if (!App.settings.keepLauncherOpen()) {
+                        App.settings.getConsole().setVisible(false); // Hide the console to pretend we've closed
+                    }
+                    if (exitValue != 0) {
+                        // Submit any pending crash reports from Open Eye if need to since we
+                        // exited abnormally
+                        if (App.settings.enableLogs() && App.settings.enableOpenEyeReporting()) {
+                            App.TASKPOOL.submit(new Runnable() {
+                                                    public void run() {
+                                                        sendOpenEyePendingReports();
+                                                    }
+                                                });
+                        }
+                    } else if (App.settings.isAdvancedBackupsEnabled() && App.settings.getAutoBackup()) {
+                        // Begin backup
+                        if (getSavesDirectory().exists()) {
+                            File[] files = getSavesDirectory().listFiles();
+                            if (files != null) {
+                                for (File file : files) {
+                                    if ((file.isDirectory()) && (!file.getName().equals("NEI"))) {
+                                        if (preWorldList.containsKey(file.getName())) {
+                                            // Only backup if file changed
+                                            if (!(preWorldList.get(file.getName()) == file.lastModified())) {
+                                                SyncAbstract sync = SyncAbstract.syncList.get(App.settings
+                                                                                                      .getLastSelectedSync());
+                                                sync.backupWorld(file.getName() + String.valueOf(file
+                                                                                                         .lastModified()), file, Instance.this);
+                                            }
+                                        }
+                                        // Or backup if a new file is found
+                                        else {
+                                            SyncAbstract sync = SyncAbstract.syncList.get(App.settings
+                                                                                                  .getLastSelectedSync());
+                                            sync.backupWorld(file.getName() + String.valueOf(file.lastModified())
+                                                                                    .replace(":", ""), file, Instance.this);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
+                    App.settings.setMinecraftLaunched(false);
+                    if (!App.settings.isInOfflineMode()) {
+                        if (isLeaderboardsEnabled() && isLoggingEnabled() && !isDev() && App.settings.enableLogs
+                                                                                                              ()) {
+                            final int timePlayed = (int) (end - start) / 1000;
+                            if (timePlayed > 0) {
+                                App.TASKPOOL.submit(new Runnable() {
+                                                        public void run() {
+                                                            addTimePlayed(timePlayed, (isDev ? "dev" : getVersion()));
+                                                        }
+                                                    });
+                            }
+                        }
+                        if (App.settings.keepLauncherOpen() && App.settings.hasUpdatedFiles()) {
+                            App.settings.reloadLauncherData();
+                        }
+                    }
+                    if (!App.settings.keepLauncherOpen()) {
+                        System.exit(0);
+                    }
+                } catch (IOException e1) {
+                    App.settings.logStackTrace(e1);
+                }
+            }
+        };
+        launcher.start();
+        return true;
     }
 
     /**
